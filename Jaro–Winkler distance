@@ -1,0 +1,26 @@
+public String checkDedup(Map<String, Object> param) {
+        String name = param.get("name").toString();
+        if (isEmployeeSimilar(name)) {
+            System.out.println("A similar  name already exists in the register.");
+        } else {
+            System.out.println("No similar  name found in the register.");
+        }
+        return null;
+    }
+
+ public boolean isEmployeeSimilar(String name) {
+        List<String> dataList = new ArrayList<>();
+        dataList = employeeRepository.findAll().stream().map(Employee::getName).collect(Collectors.toList());
+        for (String existingName : dataList) {
+            JaroWinklerDistance distance = new JaroWinklerDistance();
+            double similarity = distance.apply(existingName, name);
+            System.out.println(similarity);
+            if (similarity >= 0.7) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+//Dependencies
+    implementation 'org.apache.commons:commons-text:1.10.0'
