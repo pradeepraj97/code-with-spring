@@ -2,7 +2,7 @@ LDAP Authentication
 //Application.Properties 
 
 #LDAP Credentials
-ldap.url=ldap://172.19.45.51:389/
+ldap.url=ldap://182.11.23.21:389/
 ldap.base=OU=PTGC-Users,DC=ptgc,DC=co,DC=in
 //Config 
 
