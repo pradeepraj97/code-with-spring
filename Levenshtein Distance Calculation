@@ -1,0 +1,31 @@
+###Levenshtein Distance Calculation  Using Java Springboot###
+
+import org.apache.commons.text.similarity.LevenshteinDistance;
+import java.util.Scanner;
+
+@Bean
+    public CommandLineRunner run() {
+        return new CommandLineRunner() {
+            private final LevenshteinDistance levenshteinDistance = new LevenshteinDistance();
+
+            @Override
+            public void run(String... args) throws Exception {
+                Scanner scanner = new Scanner(System.in);
+
+                System.out.print("Enter the first vendor name: ");
+                String vendorName1 = scanner.nextLine();
+
+                System.out.print("Enter the second vendor name: ");
+                String vendorName2 = scanner.nextLine();
+
+                double similarity = calculateSimilarity(vendorName1, vendorName2);
+                System.out.printf("Similarity between '%s' and '%s' is: %.2f%%%n", vendorName1, vendorName2, similarity);
+            }
+
+            public double calculateSimilarity(String vendorName1, String vendorName2) {
+                int maxLength = Math.max(vendorName1.length(), vendorName2.length());
+                int levenshteinDist = levenshteinDistance.apply(vendorName1, vendorName2);
+                return (1.0 - ((double) levenshteinDist / maxLength)) * 100;
+            }
+        };
+    }
