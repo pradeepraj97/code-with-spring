@@ -79,9 +79,9 @@ public class LdapConfig {
                 SearchResult result = results.next();
                 log.info("User found: {}", result.getNameInNamespace());
                 Attribute userPrincipalNameAttr = result.getAttributes().get("userPrincipalName");
-                userPrincipalName = (String) userPrincipalNameAttr.get();
- 
-                System.out.println("userPrincipalName :"+ userPrincipalName);
+                String userPrincipalName = (String) userPrincipalNameAttr.get();
+
+                System.out.println("userPrincipalName :" + userPrincipalName);
 
                 ctx.close();
                 return ResponseEntity.ok("Success");
@@ -89,9 +89,24 @@ public class LdapConfig {
                 ctx.close();
                 return ResponseEntity.status(404).body("User not found");
             }
+        } catch (AuthenticationException e) {
+            log.error("Authentication failed", e);
+            return ResponseEntity.status(401).body("Authentication failed");
+        } catch (CommunicationException e) {
+            log.error("Communication with LDAP server failed", e);
+            return ResponseEntity.status(503).body("Service unavailable");
+        } catch (NamingException e) {
+            log.error("Naming exception occurred", e);
+            return ResponseEntity.status(500).body("Internal server error");
         } catch (Exception e) {
-            log.error("Error during LDAP search", e);
-            return ResponseEntity.status(500).body("Internal Server Error");
+            log.error("Unexpected error occurred", e);
+            return ResponseEntity.status(500).body("Internal server error");
         }
     }
 
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ResponseEntity<String> handleAllUncaughtException(Exception e) {
+        log.error("Unknown error occurred", e);
+        return new ResponseEntity<>("Unknown error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
