@@ -1,0 +1,96 @@
+LDAP Authentication 
+//Application.Properties 
+
+#LDAP Credentials
+ldap.url=ldap://172.19.45.51:389/
+ldap.base=OU=PTGC-Users,DC=ptgc,DC=co,DC=in
+//Config 
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.ldap.core.LdapTemplate;
+import org.springframework.ldap.core.support.LdapContextSource;
+
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.X509Certificate;
+
+@Configuration
+public class LdapConfig {
+    @Value("${ldap.base}")
+    private String ldapBase;
+
+    @Value("${ldap.url}")
+    private String ldapUrl;
+
+
+    @Bean
+    public LdapTemplate ldapTemplate() {
+        return new LdapTemplate(contextSource());
+    }
+
+    @Bean
+    public LdapContextSource contextSource() {
+        LdapContextSource ldapContextSource = new LdapContextSource();
+        ldapContextSource.setUrl(ldapUrl);
+        ldapContextSource.setBase(ldapBase);
+        return ldapContextSource;
+    }
+
+    private TrustManager[] createTrustManager() {
+        return new TrustManager[] {
+                new X509TrustManager() {
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+                    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+                    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+                }
+        };
+    }
+}
+
+//Controller Logic
+    @Value("${ldap.url}")
+    private String ldapUrl;
+    @Value("${ldap.base}")
+    private String ldapBase;
+
+@GetMapping(value = "/getLdapUserOne", produces = "application/json")
+    public ResponseEntity<?> getLdapUserOne(@RequestBody LdapUser ldapUserInfo) {
+        String searchFilter = "(cn=" + ldapUserInfo.getUserName() + ")";
+
+        Hashtable<String, String> env = new Hashtable<>();
+        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+        env.put(Context.PROVIDER_URL, ldapUrl);
+        env.put(Context.SECURITY_AUTHENTICATION, "simple");
+        env.put(Context.SECURITY_PRINCIPAL, "cn=" + ldapUserInfo.getUserName() + "," + ldapBase);
+        env.put(Context.SECURITY_CREDENTIALS, ldapUserInfo.getPassword());
+
+        try {
+            DirContext ctx = new InitialDirContext(env);
+            SearchControls searchControls = new SearchControls();
+            searchControls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+
+            NamingEnumeration<SearchResult> results = ctx.search(ldapBase, searchFilter, searchControls);
+
+            if (results.hasMore()) {
+                SearchResult result = results.next();
+                log.info("User found: {}", result.getNameInNamespace());
+                Attribute userPrincipalNameAttr = result.getAttributes().get("userPrincipalName");
+ 
+                System.out.println("userPrincipalName :"+ userPrincipalNameAttr);
+
+                ctx.close();
+                return ResponseEntity.ok("Success");
+            } else {
+                ctx.close();
+                return ResponseEntity.status(404).body("User not found");
+            }
+        } catch (Exception e) {
+            log.error("Error during LDAP search", e);
+            return ResponseEntity.status(500).body("Internal Server Error");
+        }
+    }
+
