@@ -79,8 +79,9 @@ public class LdapConfig {
                 SearchResult result = results.next();
                 log.info("User found: {}", result.getNameInNamespace());
                 Attribute userPrincipalNameAttr = result.getAttributes().get("userPrincipalName");
+                userPrincipalName = (String) userPrincipalNameAttr.get();
  
-                System.out.println("userPrincipalName :"+ userPrincipalNameAttr);
+                System.out.println("userPrincipalName :"+ userPrincipalName);
 
                 ctx.close();
                 return ResponseEntity.ok("Success");
