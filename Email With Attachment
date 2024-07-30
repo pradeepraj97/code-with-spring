@@ -1,0 +1,58 @@
+   @Override
+    public void sendMail() throws MessagingException, IOException {
+      // Setup mail server properties
+      Properties props = new Properties();
+      props.put("mail.smtp.auth", "true");
+      props.put("mail.smtp.starttls.enable", "true");
+      props.put("mail.smtp.host", "smtp.gmail.com");
+      props.put("mail.smtp.port", "587");
+
+      // Create a session with an authenticator
+      Session session = Session.getInstance(props, new javax.mail.Authenticator() {
+          protected PasswordAuthentication getPasswordAuthentication() {
+              return new PasswordAuthentication("pradeep@gmail.com", "app Password");
+          }
+      });
+
+      try {
+          // Create a MimeMessage object
+          Message msg = new MimeMessage(session);
+          msg.setFrom(new InternetAddress("pradeep@gmail.com", false));
+          msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("receiver@gmail.com"));
+          msg.setSubject("Email Test with Attachments");
+          msg.setContent("PFA", "text/html");
+          msg.setSentDate(new Date());
+
+          // Create a multipart message
+          Multipart multipart = new MimeMultipart();
+
+          // Create the message body part
+          MimeBodyPart messageBodyPart = new MimeBodyPart();
+          messageBodyPart.setContent("Email Test with Attachments", "text/html");
+          multipart.addBodyPart(messageBodyPart);
+
+          // Add attachment
+          MimeBodyPart attachPart = new MimeBodyPart();
+
+          // Load the file from resources
+          ClassLoader classLoader = getClass().getClassLoader();
+          InputStream inputStream = classLoader.getResourceAsStream("Escalation.docx");
+          if (inputStream == null) {
+              throw new FileNotFoundException("File not found: Escalation.docx");
+          }
+
+          // Attach the file directly from the input stream
+          attachPart.setDataHandler(new DataHandler(new ByteArrayDataSource(inputStream, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")));
+          attachPart.setFileName("Escalation.docx");
+          multipart.addBodyPart(attachPart);
+
+          // Set the multipart content to the message
+          msg.setContent(multipart);
+
+          // Send the message
+          Transport.send(msg);
+      } catch (MessagingException | IOException e) {
+          e.printStackTrace();
+          throw e;
+      }
+  }
