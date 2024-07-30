@@ -1,58 +1,102 @@
-   @Override
-    public void sendMail() throws MessagingException, IOException {
-      // Setup mail server properties
-      Properties props = new Properties();
-      props.put("mail.smtp.auth", "true");
-      props.put("mail.smtp.starttls.enable", "true");
-      props.put("mail.smtp.host", "smtp.gmail.com");
-      props.put("mail.smtp.port", "587");
+ //**********************************************Service******************************************************//
+ public void sendMail() throws MessagingException, IOException {
 
-      // Create a session with an authenticator
-      Session session = Session.getInstance(props, new javax.mail.Authenticator() {
-          protected PasswordAuthentication getPasswordAuthentication() {
-              return new PasswordAuthentication("pradeep@gmail.com", "app Password");
-          }
-      });
+        try {
+            // Setup mail server properties
+            Properties props = MailUtil.setupMailServerProperties();
 
-      try {
-          // Create a MimeMessage object
-          Message msg = new MimeMessage(session);
-          msg.setFrom(new InternetAddress("pradeep@gmail.com", false));
-          msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("receiver@gmail.com"));
-          msg.setSubject("Email Test with Attachments");
-          msg.setContent("PFA", "text/html");
-          msg.setSentDate(new Date());
+            // Create a session with an authenticator
+            Session session = MailUtil.createMailSession(props, "pradeep@gmail.com", "yipu imao wkoy kbnr");
 
-          // Create a multipart message
-          Multipart multipart = new MimeMultipart();
+            // Create the email message
+            Message msg = MailUtil.createEmailMessage(session, "pradeep@gmail.com", "pradeeprajcs55@gmail.com", "Email Test with Attachments", "This is a testing email with an attachment");
 
-          // Create the message body part
-          MimeBodyPart messageBodyPart = new MimeBodyPart();
-          messageBodyPart.setContent("Email Test with Attachments", "text/html");
-          multipart.addBodyPart(messageBodyPart);
+            // Create the multipart message
+            Multipart multipart = new MimeMultipart();
 
-          // Add attachment
-          MimeBodyPart attachPart = new MimeBodyPart();
+            // Add the message body part
+            MimeBodyPart messageBodyPart = MailUtil.createMessageBodyPart("Email Test with Attachments");
+            multipart.addBodyPart(messageBodyPart);
 
-          // Load the file from resources
-          ClassLoader classLoader = getClass().getClassLoader();
-          InputStream inputStream = classLoader.getResourceAsStream("Escalation.docx");
-          if (inputStream == null) {
-              throw new FileNotFoundException("File not found: Escalation.docx");
-          }
+            // Add the attachment
+            Path filesPath = Paths.get(Objects.requireNonNull(SgrcbApplication.class.getClassLoader().getResource("files")).toURI());
+            Files.list(filesPath).forEach(filePath -> {
+                try {
+                    String fileName = filePath.getFileName().toString();
+                    MimeBodyPart attachmentPart = MailUtil.createAttachment("files/" + fileName);
+                    multipart.addBodyPart(attachmentPart);
+                } catch (Exception e) {
+                    e.printStackTrace(); // Handle the exception properly in a real application
+                }
+            });
 
-          // Attach the file directly from the input stream
-          attachPart.setDataHandler(new DataHandler(new ByteArrayDataSource(inputStream, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")));
-          attachPart.setFileName("Escalation.docx");
-          multipart.addBodyPart(attachPart);
+            // Set the multipart content to the message
+            msg.setContent(multipart);
 
-          // Set the multipart content to the message
-          msg.setContent(multipart);
+            // Send the email
+            MailUtil.sendEmail(session, msg);
 
-          // Send the message
-          Transport.send(msg);
-      } catch (MessagingException | IOException e) {
-          e.printStackTrace();
-          throw e;
-      }
-  }
+        } catch (MessagingException | IOException e) {
+            e.printStackTrace();
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+
+//*********************************************MailUtil*******************************************************//
+
+public class MailUtil {
+    public static Properties setupMailServerProperties() {
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", "smtp.gmail.com");
+        props.put("mail.smtp.port", "587");
+        return props;
+    }
+
+    public static Session createMailSession(Properties props, final String username, final String password) {
+        return Session.getInstance(props, new javax.mail.Authenticator() {
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(username, password);
+            }
+        });
+    }
+
+    public static Message createEmailMessage(Session session, String from, String to, String subject, String content) throws MessagingException, MessagingException {
+        Message msg = new MimeMessage(session);
+        msg.setFrom(new InternetAddress(from, false));
+        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
+        msg.setSubject(subject);
+        msg.setContent(content, "text/html");
+        msg.setSentDate(new Date());
+        return msg;
+    }
+
+    public static MimeBodyPart createMessageBodyPart(String content) throws MessagingException {
+        MimeBodyPart messageBodyPart = new MimeBodyPart();
+        messageBodyPart.setContent(content, "text/html");
+        return messageBodyPart;
+    }
+
+    public static MimeBodyPart createAttachment(String fileName) throws MessagingException, IOException, IOException {
+        MimeBodyPart attachPart = new MimeBodyPart();
+        ClassLoader classLoader = MailUtil.class.getClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream(fileName);
+        if (inputStream == null) {
+            throw new FileNotFoundException("File not found: " + fileName);
+        }
+        DataSource dataSource = new ByteArrayDataSource(inputStream, "application/octet-stream");
+        attachPart.setDataHandler(new DataHandler(dataSource));
+        attachPart.setFileName(fileName.substring(fileName.lastIndexOf("/") + 1)); // Extract the file name
+
+        return attachPart;
+    }
+
+    public static void sendEmail(Session session, Message msg) throws MessagingException {
+        Transport.send(msg);
+    }
+
+}
